@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  db:
+    image: mysql
+    container_name: python-backend-concepts_db
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+    ports:
+      - 4306:3306
+
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    container_name: python-backend-concepts_adminer
+    depends_on:
+      - db
+    ports:
+      - 8585:8080
+networks:
+  python-backend-concepts_net:
