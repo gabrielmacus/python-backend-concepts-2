@@ -3,10 +3,7 @@ from .repository import ProductsRepository
 from .model import Product
 from ..pagination.services import PaginationServices
 from ..pagination.model import PaginationResult
-
-router = APIRouter(
-    prefix='/products'
-)
+from sqlmodel import or_
 
 class ProductsController:
     _repository:ProductsRepository
@@ -33,9 +30,9 @@ class ProductsController:
             limit:int = 20,
     ) -> PaginationResult[Product]:
         # https://stackoverflow.com/questions/20363836/postgresql-ilike-query-with-sqlalchemy
-        query = price_to == None or Product.price <= price_to, \
-                price_from == None or Product.price >= price_from,\
-                description == None or Product.description.ilike(f'%{description}%')
+        query = or_(price_to == None, Product.price <= price_to), \
+                or_(price_from == None, Product.price >= price_from),\
+                or_(description == None, Product.description.ilike(f'%{description}%'))
 
 
         count = self._repository.count(query)

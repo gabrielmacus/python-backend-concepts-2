@@ -12,6 +12,7 @@ from sqlmodel import SQLModel
 
 
 from modules.products.model import *
+from modules.users.model import *
 
 from alembic import context
 
