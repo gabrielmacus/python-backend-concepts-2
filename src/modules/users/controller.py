@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Security
 from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordRequestForm,OAuth2PasswordBearer
 from .repository import UsersRepository
@@ -20,7 +20,10 @@ class UsersController:
         self._repository = UsersRepository() if repository == None else repository
         self._services = UsersServices() if services == None else services
 
-    def demo(self, user:Annotated[User, Depends(UsersServices.check_authentication)]):
+    def demo(self, 
+             user:Annotated[User, 
+                            Security(UsersServices.check_authentication, scopes=['users:demo'])]
+            ):
         return "A"
 
     def get_token(self, data:Annotated[OAuth2PasswordRequestForm, Depends()]):
@@ -30,7 +33,7 @@ class UsersController:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        access_token = self._services.create_access_token(user)
+        access_token = self._services.create_access_token(user, data.scopes)
         return {'access_token':access_token,'token_type':'bearer'}
  
     def create(self, item:User):

@@ -5,9 +5,10 @@ from sqlmodel import or_
 from datetime import timedelta, datetime
 import os
 from jose import JWTError, jwt
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from typing import Annotated
 from fastapi import Depends,HTTPException,status
+from pydantic import ValidationError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -31,35 +32,49 @@ class UsersServices:
 
         return None
             
-    def create_access_token(self, user:User):
+    def create_access_token(self, user:User, scopes:list[str]):
         expires_delta = timedelta(minutes=int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES')))
         expiration_date = datetime.utcnow() + expires_delta
         data_to_encode = {
             "sub":user.username,
-            "exp":expiration_date
+            "exp":expiration_date,
+            "scopes":scopes
         }
         encoded_jwt = jwt.encode(data_to_encode,os.getenv('JWT_SECRET'), algorithm=os.getenv('JWT_ALGORITHM'))
         return encoded_jwt
     
     @staticmethod
-    def check_authentication(token:Annotated[str, Depends(oauth2_scheme)]):
+    def check_authentication(security_scopes:SecurityScopes, 
+                             token:Annotated[str, Depends(oauth2_scheme)]):
+        if security_scopes.scopes:
+            authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
+        else:
+            authenticate_value = "Bearer"
+        
         repository = UsersRepository()
-
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            headers={"WWW-Authenticate": "Bearer"},
+            headers={"WWW-Authenticate": authenticate_value},
         )
         
         try:
             payload = jwt.decode(token, os.getenv('JWT_SECRET'), algorithms=[os.getenv('JWT_ALGORITHM')])
             username:str = payload.get('sub')
-            if str is None:
+            if username is None:
                 raise credentials_exception
+            token_scopes = payload.get("scopes", [])
         except JWTError:
             raise credentials_exception
         
         results = repository.read([User.username == username])
         if len(results) == 0:
             raise credentials_exception
+        
+        for scope in security_scopes.scopes:
+            if scope not in token_scopes:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    headers={"WWW-Authenticate": authenticate_value},
+                )
         
         return results[0]
