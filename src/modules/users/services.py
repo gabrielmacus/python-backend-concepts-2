@@ -1,5 +1,5 @@
 from passlib.context import CryptContext
-from .model import User
+from .model import User, TokenType
 from .repository import UsersRepository
 from sqlmodel import or_
 from datetime import timedelta, datetime
@@ -7,10 +7,11 @@ import os
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from typing import Annotated
-from fastapi import Depends,HTTPException,status
+from fastapi import Depends,HTTPException,status, Cookie
 from pydantic import ValidationError
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme_refresh = OAuth2PasswordBearer(tokenUrl="token/refresh")
 
 class UsersServices:
     _password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -32,20 +33,72 @@ class UsersServices:
 
         return None
             
-    def create_access_token(self, user:User, scopes:list[str]):
-        expires_delta = timedelta(minutes=int(os.getenv('ACCESS_TOKEN_EXPIRE_MINUTES')))
+    def create_token(self, user:User, scopes:list[str], type:TokenType):
+        if type == TokenType.ACCESS:
+            token_expire_minutes = os.getenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES')
+            token_secret = os.getenv('JWT_ACCESS_TOKEN_SECRET')
+            token_algorithm = os.getenv('JWT_ACCESS_TOKEN_ALGORITHM')
+        else:
+            token_expire_minutes = os.getenv('JWT_REFRESH_TOKEN_EXPIRE_MINUTES')
+            token_secret = os.getenv('JWT_REFRESH_TOKEN_SECRET')
+            token_algorithm = os.getenv('JWT_REFRESH_TOKEN_ALGORITHM')  
+
+        expires_delta = timedelta(minutes=int(token_expire_minutes))
         expiration_date = datetime.utcnow() + expires_delta
         data_to_encode = {
+            "iat":datetime.utcnow(),
             "sub":user.username,
             "exp":expiration_date,
             "scopes":scopes
         }
-        encoded_jwt = jwt.encode(data_to_encode,os.getenv('JWT_SECRET'), algorithm=os.getenv('JWT_ALGORITHM'))
-        return encoded_jwt
+
+        encoded_jwt = jwt.encode(
+            data_to_encode,
+            token_secret, 
+            algorithm=token_algorithm
+        )
+        return encoded_jwt      
+    
+    def create_access_token(self, user:User, scopes:list[str]):
+        return self.create_token(user, scopes, TokenType.ACCESS)
+    
+    def create_refresh_token(self, user:User):
+        return self.create_token(user, [], TokenType.REFRESH)
+    
+    @staticmethod
+    def check_refresh_token(token:Annotated[str | None, Cookie()] = None):
+        if token is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return UsersServices.check_authentication(
+            SecurityScopes(None),
+            token,
+            TokenType.REFRESH)
+    
+    def check_access_token(security_scopes:SecurityScopes, 
+                           token:Annotated[str, Depends(oauth2_scheme)]):
+        return UsersServices.check_authentication(
+            security_scopes,
+            token,
+            TokenType.ACCESS) 
+    
+    @staticmethod
+    def check_scopes(token_scopes:list[str], security_scopes:SecurityScopes):
+        pass
     
     @staticmethod
     def check_authentication(security_scopes:SecurityScopes, 
-                             token:Annotated[str, Depends(oauth2_scheme)]):
+                             token:str,
+                             token_type:TokenType):
+        if token_type == TokenType.ACCESS:
+            jwt_secret = os.getenv('JWT_ACCESS_TOKEN_SECRET')
+            jwt_algorithm = os.getenv('JWT_ACCESS_TOKEN_ALGORITHM')
+        else:
+            jwt_secret = os.getenv('JWT_REFRESH_TOKEN_SECRET')
+            jwt_algorithm = os.getenv('JWT_REFRESH_TOKEN_ALGORITHM')
+
         if security_scopes.scopes:
             authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
         else:
@@ -58,11 +111,14 @@ class UsersServices:
         )
         
         try:
-            payload = jwt.decode(token, os.getenv('JWT_SECRET'), algorithms=[os.getenv('JWT_ALGORITHM')])
+            payload = jwt.decode(
+                token, 
+                jwt_secret, 
+                algorithms=[jwt_algorithm])
             username:str = payload.get('sub')
             if username is None:
                 raise credentials_exception
-            token_scopes = payload.get("scopes", [])
+            token_scopes:list[str] = payload.get("scopes", [])
         except JWTError:
             raise credentials_exception
         

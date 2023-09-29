@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Security
 from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordRequestForm,OAuth2PasswordBearer
 from .repository import UsersRepository
-from .model import User, LoginDTO
+from .model import User, LoginDTO, TokenDTO
 from .services import UsersServices
 from ..pagination.services import PaginationServices
 from ..pagination.model import PaginationResult
@@ -10,7 +10,9 @@ from sqlmodel import or_
 from typing import Annotated
 import os
 
-
+# https://www.reddit.com/r/node/comments/12ailfn/where_to_store_acces_and_refresh_tokens/
+# https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+# https://www.stackhawk.com/blog/csrf-protection-in-fastapi/
 
 class UsersController:
     _services:UsersServices
@@ -22,7 +24,7 @@ class UsersController:
 
     def demo(self, 
              user:Annotated[User, 
-                            Security(UsersServices.check_authentication, scopes=['users:demo'])]
+                            Security(UsersServices.check_access_token, scopes=['users:demo'])]
             ):
         return "A"
 
@@ -34,6 +36,16 @@ class UsersController:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         access_token = self._services.create_access_token(user, data.scopes)
+        refresh_token = self._services.create_refresh_token(user)
+        return LoginDTO(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type='bearer'
+        )
+    
+    def refresh_token(self, 
+                          user:Annotated[User,Security(UsersServices.check_refresh_token)]):
+        access_token = self._services.create_access_token(user, [])
         return {'access_token':access_token,'token_type':'bearer'}
  
     def create(self, item:User):
