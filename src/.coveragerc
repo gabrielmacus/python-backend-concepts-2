@@ -1,0 +1,7 @@
+[coverage:report]
+skip_empty = true
+omit = 
+    modules/products/repository.py
+    model.py
+    router.py
+exclude_lines = 

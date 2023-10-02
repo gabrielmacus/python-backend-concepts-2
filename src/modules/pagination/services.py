@@ -11,7 +11,6 @@ class PaginationServices():
     def get_pages_count(
             self, 
             count:int, 
-            limit:int,
-            items:List[T]
-        ) -> PaginationResult[T]:
+            limit:int
+        ) -> int:
         return math.ceil(count / limit)
