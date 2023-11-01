@@ -4,7 +4,7 @@ from sqlalchemy.engine import Engine
 from modules.base.model import BaseModel
 from modules.base.repository import BaseRepository
 from modules.pagination.services import PaginationServices
-from modules.pagination.model import PaginationResult
+from modules.pagination.models import PaginationResult
 from sqlmodel import SQLModel
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool

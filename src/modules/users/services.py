@@ -1,40 +1,50 @@
 from passlib.context import CryptContext
-from .model import User, TokenType
-from .repository import UsersRepository
+from .models import User, TokenType
+from . import repository as users_repository
 from sqlmodel import or_
 from datetime import timedelta, datetime
 import os
-from jose import JWTError, jwt
+from ..jwt.services import JWTServices
 from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from typing import Annotated
 from fastapi import Depends,HTTPException,status, Cookie
 from pydantic import ValidationError
+from .interfaces import IUsersRepository
+from jose import JWTError
+from .models import PublicUser
+from automapper import mapper
+
+# https://dev.to/rhuzaifa/solid-is-it-still-useful-in-2021-5ff6
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 oauth2_scheme_refresh = OAuth2PasswordBearer(tokenUrl="token/refresh")
 
 class UsersServices:
-    _password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    _repository:UsersRepository
+    _password_context:CryptContext
+    _repository:IUsersRepository
+    _jwt_services:JWTServices
     
-    def __init__(self, repository: UsersRepository = None) -> None:
-        self._repository = UsersRepository() if repository == None else repository
+    def __init__(self, 
+                 repository: IUsersRepository = None, 
+                 password_context: CryptContext = None,
+                 jwt_services:JWTServices = None) -> None:
+        self._repository = users_repository.UsersRepository(services=self) if repository == None else repository
+        self._password_context = CryptContext(schemes=["bcrypt"], deprecated="auto") if password_context == None else password_context
+        self._jwt_services = JWTServices() if jwt_services == None else  jwt_services
 
     def hash_password(self, plain_password:str):
         return self._password_context.hash(plain_password)
 
     def authenticate_user(self, username:str, password:str):
-        query = [or_(User.email == username,
-            User.username == username)]
-        results = self._repository.read(query)
-        if len(results) == 1 and \
-           self._password_context.verify(password, results[0].password) == True:
-            return results[0]
+        user = self._repository.readByUsernameOrEmail(username)
+        if user != None and \
+           self._password_context.verify(password, user.password) == True:
+            return user
 
         return None
             
-    def create_token(self, user:User, scopes:list[str], type:TokenType):
-        if type == TokenType.ACCESS:
+    def create_token(self, user:User, scopes:list[str], token_type:TokenType):
+        if token_type == TokenType.ACCESS:
             token_expire_minutes = os.getenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES')
             token_secret = os.getenv('JWT_ACCESS_TOKEN_SECRET')
             token_algorithm = os.getenv('JWT_ACCESS_TOKEN_ALGORITHM')
@@ -51,8 +61,8 @@ class UsersServices:
             "exp":expiration_date,
             "scopes":scopes
         }
-
-        encoded_jwt = jwt.encode(
+        
+        encoded_jwt = self._jwt_services.encode(
             data_to_encode,
             token_secret, 
             algorithm=token_algorithm
@@ -91,7 +101,12 @@ class UsersServices:
     @staticmethod
     def check_authentication(security_scopes:SecurityScopes, 
                              token:str,
-                             token_type:TokenType):
+                             token_type:TokenType,
+                             jwt_services:JWTServices = None,
+                             repository:IUsersRepository = None):
+        repository = users_repository.UsersRepository() if repository == None else repository
+        jwt_services = JWTServices() if jwt_services == None else jwt_services
+
         if token_type == TokenType.ACCESS:
             jwt_secret = os.getenv('JWT_ACCESS_TOKEN_SECRET')
             jwt_algorithm = os.getenv('JWT_ACCESS_TOKEN_ALGORITHM')
@@ -103,15 +118,14 @@ class UsersServices:
             authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
         else:
             authenticate_value = "Bearer"
-        
-        repository = UsersRepository()
+            
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             headers={"WWW-Authenticate": authenticate_value},
         )
         
         try:
-            payload = jwt.decode(
+            payload = jwt_services.decode(
                 token, 
                 jwt_secret, 
                 algorithms=[jwt_algorithm])
@@ -133,4 +147,4 @@ class UsersServices:
                     headers={"WWW-Authenticate": authenticate_value},
                 )
         
-        return results[0]
+        return mapper.to(PublicUser).map(results[0])

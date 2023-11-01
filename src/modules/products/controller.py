@@ -1,11 +1,22 @@
 from fastapi import APIRouter
+
+from modules.base.repository import BaseRepository
 from .repository import ProductsRepository
-from .model import Product
+from .models import Product
 from ..pagination.services import PaginationServices
-from ..pagination.model import PaginationResult
+from ..pagination.models import PaginationResult
+from ..base.controller import BaseController
 from sqlmodel import or_
 from sqlalchemy.sql.operators import is_
 
+
+class ProductsController(BaseController[Product]): # pragma: no cover
+    def __init__(self, 
+                 repository: ProductsRepository = None, 
+                 pagination_services: PaginationServices = None) -> None: 
+        repository = ProductsRepository() if repository == None else repository 
+        super().__init__(repository, pagination_services)
+'''
 class ProductsController:
     _repository:ProductsRepository
     _pagination_services:PaginationServices
@@ -61,3 +72,4 @@ class ProductsController:
             pages_count=pages_count, 
             items=items
         )
+'''

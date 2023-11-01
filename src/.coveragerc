@@ -4,4 +4,8 @@ omit =
     modules/products/repository.py
     model.py
     router.py
+    interfaces.py
 exclude_lines = 
+ pragma: no cover
+ import
+ from

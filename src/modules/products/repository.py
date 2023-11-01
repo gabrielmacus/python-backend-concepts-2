@@ -1,4 +1,4 @@
-from .model import Product
+from .models import Product
 from ..db.services import DbServices
 from ..base.repository import BaseRepository
 

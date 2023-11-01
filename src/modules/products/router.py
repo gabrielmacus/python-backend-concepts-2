@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter
 from .controller import ProductsController
-from .model import Product
-from ..pagination.model import PaginationResult
+from .models import Product
+from ..pagination.models import PaginationResult
 from typing import List
 
 router = APIRouter(

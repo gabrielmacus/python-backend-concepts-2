@@ -6,19 +6,19 @@ from pydantic import EmailStr
 from enum import Enum
 
 # https://dev.to/izabelakowal/some-ideas-on-how-to-implement-dtos-in-python-be3
-class UserDTO(BaseModel):
+class PublicUser(BaseModel):
     username:str
     email:EmailStr
 
-class User(UserDTO, table=True):
+class User(PublicUser, table=True):
     password:str
 
-class LoginDTO(PydanticModel):
+class LoginData(PydanticModel):
     access_token:str
     refresh_token:str
     token_type:str
 
-class TokenDTO(PydanticModel):
+class TokenData(PydanticModel):
     token:str
     token_type:str
 

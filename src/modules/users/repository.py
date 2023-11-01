@@ -1,45 +1,32 @@
-from .model import User
-from typing import List
+from __future__ import annotations
+from .models import User
+from typing import List, Type
 from sqlmodel import Session, select
 from sqlalchemy import func
 from ..db.services import DbServices
 from sqlalchemy.orm import Query
 from passlib.context import CryptContext
+from ..base.repository import BaseRepository
+from sqlmodel import or_
+from typing import Any
+from .services import UsersServices
+from .interfaces import IUsersRepository
 
+class UsersRepository(BaseRepository[User], IUsersRepository):
+    services:UsersServices
 
+    def __init__(self,
+                 db_services: DbServices = None,
+                 services:UsersServices = None
+                 ) -> None:
+        self.services = services if services != None else UsersServices()
+        super().__init__(User, db_services)
 
-class  UsersRepository:
-    def __init__(self) -> None:
-        pass
+    def create(self, item: User) -> User:
+        item.password = self.services.hash_password(item.password)
+        return super().create(item)
 
-    def create(self, item:User):
-        item.password = self._services.hash_password(item.password)
-        
-        with Session(DbServices().get_engine()) as session:
-            session.add(item)
-            session.commit()
-            session.refresh(item)
-        return item
-
-    def read(
-            self, 
-            query = None,
-            limit:int = None, 
-            offset:int = None
-            ) -> List[User]:
-        with Session(DbServices().get_engine()) as session:
-            statement = select(User) \
-                .where(*query) \
-                .limit(limit) \
-                .offset(offset)
-            
-            results = session.exec(statement)
-            items = results.all()
-        return items
-    
-    def count(self, query = None) -> int:
-        with Session(DbServices().get_engine()) as session:
-            # Not optimized (slow) -> session.query(Product).count()
-            count_result = session.query(func.count(User.id)).where(*query).scalar()
-        return count_result
-        
+    def readByUsernameOrEmail(self, usernameOrEmail:str) -> User | None:
+        results = self.read([or_(User.email == usernameOrEmail,User.username == usernameOrEmail)])
+        if len(results) == 0: return None
+        return results[0]

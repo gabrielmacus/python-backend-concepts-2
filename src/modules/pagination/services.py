@@ -1,4 +1,4 @@
-from .model import PaginationResult
+from .models import PaginationResult
 from typing import List, TypeVar, Generic
 import math
 

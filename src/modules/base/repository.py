@@ -4,16 +4,18 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from ..db.services import DbServices
 from sqlalchemy.orm import Query
-from datetime import datetime
-from abc import ABC, abstractmethod
+from datetime import datetime 
+from .interfaces import IBaseRepository
 
 T = TypeVar("T")
 # Generic[T]
-class BaseRepository(Generic[T]):
+class BaseRepository(IBaseRepository[T]):
     _db_services:DbServices
     _model: Type[T]
     
-    def __init__(self,  model:Type[T], db_services:DbServices = None) -> None:
+    def __init__(self,  
+                 model:Type[T], 
+                 db_services:DbServices = None) -> None:
         self._db_services = DbServices() if db_services == None else db_services
         self._model = model
         
