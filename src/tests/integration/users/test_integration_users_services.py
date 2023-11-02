@@ -44,11 +44,11 @@ def test_check_authentication__valid_token(repository, monkeypatch):
         
         token = services.create_access_token(
             user,
-            ['products.read','products.create'])
+            ['products:read','products:create'])
         
         
         auth_user = UsersServices.check_authentication(
-            SecurityScopes(['products.read','products.create']),
+            SecurityScopes(['products:read','products:create']),
             token,
             TokenType.ACCESS,
             repository=repository
@@ -57,8 +57,7 @@ def test_check_authentication__valid_token(repository, monkeypatch):
         assert auth_user.username == user.username
         assert auth_user.email == user.email
         assert hasattr(auth_user, 'password') == False
-
-       
+      
 def test_check_authentication__invalid_token(repository, monkeypatch):
     monkeypatch.setenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', '10')
     monkeypatch.setenv('JWT_ACCESS_TOKEN_SECRET', 'ihasd123')
@@ -111,6 +110,112 @@ def test_check_authentication__token_without_username(repository, monkeypatch):
             
         assert ex.value.status_code == status.HTTP_401_UNAUTHORIZED
         assert ex.value.headers ==  {"WWW-Authenticate":'Bearer scope="products.read products.create"'}
+                 
+def test_check_authentication__token_invalid_username(repository, monkeypatch):
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', '10')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_SECRET', 'ihasd123')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_ALGORITHM', 'HS256')
+
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_EXPIRE_MINUTES', '20')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_SECRET', 'qwertyuio')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_ALGORITHM', 'HS256')
+
+    user = User(id=1,username="johndoe",email="johndoe@user.com",password="123456")
+    repository.create(user)
+
+    dt = datetime(2020,1,1,0,0,0)
+    with time_machine.travel(dt):
+        token = jwt.encode({"sub":"janedoe"},'ihasd123',algorithm='HS256')
+        
+        with pytest.raises(HTTPException) as ex:
+            UsersServices.check_authentication(
+                SecurityScopes(['products.read','products.create']),
+                token,
+                TokenType.ACCESS,
+                repository=repository
+            )
             
+        assert ex.value.status_code == status.HTTP_401_UNAUTHORIZED
+        assert ex.value.headers ==  {"WWW-Authenticate":'Bearer scope="products.read products.create"'}
+            
+def test_check_authentication__token_unauthorized_1(repository, monkeypatch):
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', '10')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_SECRET', 'ihasd123')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_ALGORITHM', 'HS256')
+
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_EXPIRE_MINUTES', '20')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_SECRET', 'qwertyuio')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_ALGORITHM', 'HS256')
+
+    user = User(id=1,username="johndoe",email="johndoe@user.com",password="123456")
+    repository.create(user)
+
+    dt = datetime(2020,1,1,0,0,0)
+    with time_machine.travel(dt):
+        token = jwt.encode({"sub":"johndoe", "scopes":[]},'ihasd123',algorithm='HS256')
         
+        with pytest.raises(HTTPException) as ex:
+            UsersServices.check_authentication(
+                SecurityScopes(['products:read','products:create']),
+                token,
+                TokenType.ACCESS,
+                repository=repository
+            )
+            
+        assert ex.value.status_code == status.HTTP_403_FORBIDDEN
+        assert ex.value.headers ==  {"WWW-Authenticate":'Bearer scope="products:read products:create"'}
+
+def test_check_authentication__token_unauthorized_2(repository, monkeypatch):
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', '10')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_SECRET', 'ihasd123')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_ALGORITHM', 'HS256')
+
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_EXPIRE_MINUTES', '20')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_SECRET', 'qwertyuio')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_ALGORITHM', 'HS256')
+
+    user = User(id=1,username="johndoe",email="johndoe@user.com",password="123456")
+    repository.create(user)
+
+    dt = datetime(2020,1,1,0,0,0)
+    with time_machine.travel(dt):
+        token = jwt.encode({"sub":"johndoe", "scopes":["products:read","!products:create"]},'ihasd123',algorithm='HS256')
         
+        with pytest.raises(HTTPException) as ex:
+            UsersServices.check_authentication(
+                SecurityScopes(['products:read','products:create']),
+                token,
+                TokenType.ACCESS,
+                repository=repository
+            )
+            
+        assert ex.value.status_code == status.HTTP_403_FORBIDDEN
+        assert ex.value.headers ==  {"WWW-Authenticate":'Bearer scope="products:read products:create"'}
+            
+
+def test_check_authentication__token_authorized(repository, monkeypatch):
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', '10')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_SECRET', 'ihasd123')
+    monkeypatch.setenv('JWT_ACCESS_TOKEN_ALGORITHM', 'HS256')
+
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_EXPIRE_MINUTES', '20')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_SECRET', 'qwertyuio')
+    monkeypatch.setenv('JWT_REFRESH_TOKEN_ALGORITHM', 'HS256')
+
+    user = User(id=1,username="johndoe",email="johndoe@user.com",password="123456")
+    repository.create(user)
+
+    dt = datetime(2020,1,1,0,0,0)
+    with time_machine.travel(dt):
+        token = jwt.encode({"sub":"johndoe", "scopes":["products:*"]},'ihasd123',algorithm='HS256')
+        
+        auth_user = UsersServices.check_authentication(
+            SecurityScopes(['products:read','products:create']),
+            token,
+            TokenType.ACCESS,
+            repository=repository
+        )
+            
+        assert auth_user.username == user.username
+        assert auth_user.email == user.email
+        assert hasattr(auth_user, 'password') == False

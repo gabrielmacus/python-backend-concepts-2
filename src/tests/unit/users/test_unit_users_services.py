@@ -114,4 +114,86 @@ def test_create_token__refresh(services, monkeypatch):
         assert datetime.utcfromtimestamp(payload['exp']) == dt + timedelta(minutes=20)
         assert datetime.utcfromtimestamp(payload['iat']) == dt
 
+def test_check_scopes(services):
+    result = services.check_scopes(
+        ["products:read"], 
+        SecurityScopes(["products:read"])
+        )
 
+    assert result == True
+
+def test_check_scopes__multi(services):
+    result = services.check_scopes(
+        ["products:create","products:read", "users:read",], 
+        SecurityScopes(["products:read", "products:create"])
+    )
+
+    assert result == True
+
+def test_check_scopes__wildcard(services):
+    result = services.check_scopes(
+        ["products:*"], 
+        SecurityScopes(["products:read"])
+    )
+
+    assert result == True
+
+def test_check_scopes__negation(services):
+    result = services.check_scopes(
+        ["products:*", "!products:create"], 
+        SecurityScopes(["products:create"])
+    )
+
+    assert result == False
+
+
+def test_check_scopes__negation_2(services):
+    result = services.check_scopes(
+        ["users.read", "products:*", "!products:create"], 
+        SecurityScopes(["users:read","products:create"])
+    )
+
+    assert result == False
+
+
+def test_check_scopes__negation_3(services):
+    result = services.check_scopes(
+        ["products:*", "!products:create"], 
+        SecurityScopes(["products:read"])
+    )
+
+    assert result == True
+
+def test_check_scopes__unauthorized(services):
+    result = services.check_scopes(
+        ["products:create"], 
+        SecurityScopes(["products:read"])
+        )
+
+    assert result == False
+
+
+def test_check_scopes__empty_unauthorized(services):
+    result = services.check_scopes(
+        [], 
+        SecurityScopes(["products:read"])
+        )
+
+    assert result == False
+
+def test_check_scopes__empty_authorized_1(services):
+    result = services.check_scopes(
+        [], 
+        SecurityScopes([])
+        )
+
+    assert result == True
+
+
+def test_check_scopes__empty_authorized_2(services):
+    result = services.check_scopes(
+        ["products:*"], 
+        SecurityScopes([])
+        )
+
+    assert result == True

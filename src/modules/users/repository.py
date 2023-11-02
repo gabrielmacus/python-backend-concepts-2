@@ -12,7 +12,7 @@ from typing import Any
 from .services import UsersServices
 from .interfaces import IUsersRepository
 
-class UsersRepository(BaseRepository[User], IUsersRepository):
+class UsersRepository(IUsersRepository, BaseRepository[User]):
     services:UsersServices
 
     def __init__(self,

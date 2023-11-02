@@ -6,6 +6,7 @@ from modules.base.repository import BaseRepository
 from .repository import UsersRepository
 from .models import User, LoginData, TokenData
 from .services import UsersServices
+from .interfaces import IUsersRepository
 from ..pagination.services import PaginationServices
 from ..pagination.models import PaginationResult
 from ..base.controller import BaseController
@@ -19,10 +20,10 @@ import os
 
 class UsersController(BaseController[User]):
     _services:UsersServices
-    _repository:UsersRepository
+    _repository:IUsersRepository
 
     def __init__(self, 
-                 repository: UsersRepository = None, 
+                 repository: IUsersRepository = None, 
                  services: UsersServices = None,
                  pagination_services: PaginationServices = None) -> None:
         self._repository = UsersRepository() if repository == None else repository

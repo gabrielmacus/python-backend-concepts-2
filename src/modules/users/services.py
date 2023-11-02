@@ -95,9 +95,25 @@ class UsersServices:
             TokenType.ACCESS) 
     
     @staticmethod
-    def check_scopes(token_scopes:list[str], security_scopes:SecurityScopes):
-        pass
-    
+    def check_scopes(token_scopes:list[str], required_scopes:SecurityScopes):
+        """See https://flowlet.app/blog/oauth2-scopes-for-fine-grained-acls
+
+        Args:
+            token_scopes (list[str]): _description_
+            security_scopes (SecurityScopes): _description_
+        """
+        for required_scope in required_scopes.scopes:
+            required_resource,required_action = required_scope.split(":")
+
+            if f'!{required_scope}' in token_scopes:
+                return False
+            
+            if  required_scope not in token_scopes and \
+                f'{required_resource}:*' not in token_scopes:
+                return False
+        
+        return True
+
     @staticmethod
     def check_authentication(security_scopes:SecurityScopes, 
                              token:str,
@@ -140,11 +156,13 @@ class UsersServices:
         if len(results) == 0:
             raise credentials_exception
         
-        for scope in security_scopes.scopes:
-            if scope not in token_scopes:
-                raise HTTPException(
+        if UsersServices.check_scopes(
+            token_scopes, 
+            security_scopes) == False:
+            raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     headers={"WWW-Authenticate": authenticate_value},
                 )
+                
         
         return mapper.to(PublicUser).map(results[0])
