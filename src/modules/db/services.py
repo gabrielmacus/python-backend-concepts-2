@@ -13,6 +13,7 @@ class DbServices():
 
     def get_engine(self) -> Engine:
         if self._engine == None:
-            # TODO: Echo on debugonly
-            self._engine = create_engine(os.getenv('DB_CONNECTION_STRING'), echo=True)
+            self._engine = create_engine(
+                os.getenv('DB_CONNECTION_STRING'), echo=bool(int(os.getenv("DEBUG",1)))
+            )
         return self._engine

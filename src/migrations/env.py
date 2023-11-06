@@ -11,7 +11,6 @@ from sqlalchemy import pool
 from sqlmodel import SQLModel
 
 
-from modules.products.models import *
 from modules.users.models import *
 
 from alembic import context

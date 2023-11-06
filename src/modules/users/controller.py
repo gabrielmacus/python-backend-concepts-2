@@ -30,13 +30,6 @@ class UsersController(BaseController[User]):
         self._services = UsersServices() if services == None else services
         super().__init__(repository, pagination_services)
 
-
-    def demo(self, 
-             user:Annotated[User, 
-                            Security(UsersServices.check_access_token, scopes=['users:demo'])]
-            ):# pragma: no cover
-        return "A"
-
     def get_token(self, data:Annotated[OAuth2PasswordRequestForm, Depends()]):
         user = self._services.authenticate_user(data.username, data.password)
         if user is None:
@@ -56,4 +49,22 @@ class UsersController(BaseController[User]):
                           user:Annotated[User,Security(UsersServices.check_refresh_token)]):
         access_token = self._services.create_access_token(user, [])
         return TokenData(token=access_token, token_type='bearer')
- 
+    
+
+    def create(self, 
+               user:Annotated[User, 
+                            Security(UsersServices.check_access_token, 
+                                     scopes=['users:create'])],
+               item: User):
+        return super().create(item)
+
+
+    def read(self, 
+             user:Annotated[User, 
+                            Security(UsersServices.check_access_token, 
+                                     scopes=['users:read'])],
+             query: list = [], 
+             page: int = 1, 
+             limit: int = 20) -> PaginationResult[User]:
+        return super().read(query, page, limit)
+    

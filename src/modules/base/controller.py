@@ -2,6 +2,7 @@ from .repository import BaseRepository
 from ..pagination.services import PaginationServices
 from ..pagination.models import PaginationResult
 from typing import Type, TypeVar,Generic
+import os
 
 T = TypeVar("T")
 
@@ -22,7 +23,7 @@ class BaseController(Generic[T]):
     
     def read(
             self,
-            query = [],
+            query:list = [],
             page:int = 1, 
             limit:int = 20,
     ) -> PaginationResult[T]:

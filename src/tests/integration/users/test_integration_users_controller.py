@@ -41,7 +41,7 @@ def test_create__is_hashing(db_services, monkeypatch):
         password='123456',
         username='user'
     ))
-    result = controller.read()
+    result = controller.read(user=User())
     assert result.items[0].password != '123456' 
 
 def test_get_token(db_services, monkeypatch):

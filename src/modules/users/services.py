@@ -44,14 +44,9 @@ class UsersServices:
         return None
             
     def create_token(self, user:User, scopes:list[str], token_type:TokenType):
-        if token_type == TokenType.ACCESS:
-            token_expire_minutes = os.getenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES')
-            token_secret = os.getenv('JWT_ACCESS_TOKEN_SECRET')
-            token_algorithm = os.getenv('JWT_ACCESS_TOKEN_ALGORITHM')
-        else:
-            token_expire_minutes = os.getenv('JWT_REFRESH_TOKEN_EXPIRE_MINUTES')
-            token_secret = os.getenv('JWT_REFRESH_TOKEN_SECRET')
-            token_algorithm = os.getenv('JWT_REFRESH_TOKEN_ALGORITHM')  
+        token_expire_minutes = os.getenv(f'JWT_{token_type.name}_TOKEN_EXPIRE_MINUTES')
+        token_secret = os.getenv(f'JWT_{token_type.name}_TOKEN_SECRET')
+        token_algorithm = os.getenv(f'JWT_{token_type.name}_TOKEN_ALGORITHM')
 
         expires_delta = timedelta(minutes=int(token_expire_minutes))
         expiration_date = datetime.utcnow() + expires_delta
@@ -121,14 +116,9 @@ class UsersServices:
                              jwt_services:JWTServices = None,
                              repository:IUsersRepository = None):
         repository = users_repository.UsersRepository() if repository == None else repository
-        jwt_services = JWTServices() if jwt_services == None else jwt_services
-
-        if token_type == TokenType.ACCESS:
-            jwt_secret = os.getenv('JWT_ACCESS_TOKEN_SECRET')
-            jwt_algorithm = os.getenv('JWT_ACCESS_TOKEN_ALGORITHM')
-        else:
-            jwt_secret = os.getenv('JWT_REFRESH_TOKEN_SECRET')
-            jwt_algorithm = os.getenv('JWT_REFRESH_TOKEN_ALGORITHM')
+        jwt_services = JWTServices() if jwt_services is None else jwt_services
+        jwt_secret = os.getenv(f'JWT_{token_type.name}_TOKEN_SECRET')
+        jwt_algorithm = os.getenv(f'JWT_{token_type.name}_TOKEN_ALGORITHM')
 
         if security_scopes.scopes:
             authenticate_value = f'Bearer scope="{security_scopes.scope_str}"'
@@ -158,7 +148,7 @@ class UsersServices:
         
         if UsersServices.check_scopes(
             token_scopes, 
-            security_scopes) == False:
+            security_scopes) is False:
             raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     headers={"WWW-Authenticate": authenticate_value},

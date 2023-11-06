@@ -8,7 +8,7 @@ from enum import Enum
 # https://dev.to/izabelakowal/some-ideas-on-how-to-implement-dtos-in-python-be3
 class PublicUser(BaseModel):
     username:str
-    email:EmailStr
+    #email:EmailStr
 
 class User(PublicUser, table=True):
     password:str

@@ -15,4 +15,3 @@ router.add_api_route('/', controller.create, methods=['POST'])
 router.add_api_route('/token', controller.get_token, methods=['POST'], response_model=LoginData)
 router.add_api_route('/token/refresh', controller.refresh_token, methods=['POST'])
 
-router.add_api_route('/demo', controller.demo, methods=['GET'])
