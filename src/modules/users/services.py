@@ -1,6 +1,5 @@
-from passlib.context import CryptContext
 from .models import User, TokenType
-from . import repository as users_repository
+from .repository import UsersRepository
 from sqlmodel import or_
 from datetime import timedelta, datetime
 import os
@@ -9,10 +8,10 @@ from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from typing import Annotated
 from fastapi import Depends,HTTPException,status, Cookie
 from pydantic import ValidationError
-from .interfaces import IUsersRepository
 from jose import JWTError
-from .models import PublicUser
+from .models import UserDTO
 from automapper import mapper
+from ..password.services import PaswordServices
 
 # https://dev.to/rhuzaifa/solid-is-it-still-useful-in-2021-5ff6
 
@@ -20,25 +19,23 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 oauth2_scheme_refresh = OAuth2PasswordBearer(tokenUrl="token/refresh")
 
 class UsersServices:
-    _password_context:CryptContext
-    _repository:IUsersRepository
+    _repository:UsersRepository
     _jwt_services:JWTServices
+    _password_services:PaswordServices
     
     def __init__(self, 
-                 repository: IUsersRepository = None, 
-                 password_context: CryptContext = None,
-                 jwt_services:JWTServices = None) -> None:
-        self._repository = users_repository.UsersRepository(services=self) if repository == None else repository
-        self._password_context = CryptContext(schemes=["bcrypt"], deprecated="auto") if password_context == None else password_context
+                 repository: UsersRepository = None,
+                 jwt_services:JWTServices = None,
+                 password_services:PaswordServices = None) -> None:
+        self._repository = UsersRepository() if repository == None else repository
         self._jwt_services = JWTServices() if jwt_services == None else  jwt_services
+        self._password_services = PaswordServices() if password_services == None else  password_services
 
-    def hash_password(self, plain_password:str):
-        return self._password_context.hash(plain_password)
 
     def authenticate_user(self, username:str, password:str):
         user = self._repository.readByUsernameOrEmail(username)
         if user != None and \
-           self._password_context.verify(password, user.password) == True:
+           self._password_services.verify_password(password, user.password) == True:
             return user
 
         return None
@@ -114,8 +111,8 @@ class UsersServices:
                              token:str,
                              token_type:TokenType,
                              jwt_services:JWTServices = None,
-                             repository:IUsersRepository = None):
-        repository = users_repository.UsersRepository() if repository == None else repository
+                             repository:UsersRepository = None):
+        repository = UsersRepository() if repository == None else repository
         jwt_services = JWTServices() if jwt_services is None else jwt_services
         jwt_secret = os.getenv(f'JWT_{token_type.name}_TOKEN_SECRET')
         jwt_algorithm = os.getenv(f'JWT_{token_type.name}_TOKEN_ALGORITHM')
@@ -155,4 +152,4 @@ class UsersServices:
                 )
                 
         
-        return mapper.to(PublicUser).map(results[0])
+        return mapper.to(UserDTO).map(results[0])

@@ -4,12 +4,11 @@ from sqlmodel import Session, select
 from sqlalchemy import func
 from ..db.services import DbServices
 from sqlalchemy.orm import Query
-from datetime import datetime 
-from .interfaces import IBaseRepository
+from datetime import datetime
 
 T = TypeVar("T")
-# Generic[T]
-class BaseRepository(IBaseRepository[T]):
+
+class BaseRepository(Generic[T]):
     _db_services:DbServices
     _model: Type[T]
     

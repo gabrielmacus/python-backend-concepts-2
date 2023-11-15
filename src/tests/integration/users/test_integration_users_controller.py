@@ -14,7 +14,7 @@ from fastapi import HTTPException, FastAPI
 from fastapi.testclient import TestClient
 from main import create_app
 
-class MockUserServices:
+class MockPasswordServices:
     def hash_password(self,secret):
         return secret[1::]
     
@@ -29,18 +29,21 @@ def db_services():
 def test_create__is_hashing(db_services, monkeypatch):
     repository = UsersRepository(
         db_services,
-        services=MockUserServices()
+        password_services=MockPasswordServices()
         
     ) 
     controller = UsersController(
         repository=repository
     )
-    controller.create(User(
-        id=1,
-        email='user@user.com',
-        password='123456',
-        username='user'
-    ))
+    controller.create(
+        None,    
+        User(
+            id=1,
+            email='user@user.com',
+            password='123456',
+            username='user'
+        )
+    )
     result = controller.read(user=User())
     assert result.items[0].password != '123456' 
 

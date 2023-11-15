@@ -33,17 +33,17 @@ class MockUsersRepository():
         print(query)
         return []
 
-class MockPasswordContext():
-    def hash(self, password:str):
+class MockPasswordsServices():
+    def hash_password(self, password:str):
         return password
-    def verify(self, secret:str, hash:str):
+    def verify_password(self, secret:str, hash:str):
         return secret == hash
 
 @pytest.fixture
 def services():
     return UsersServices(
         repository=MockUsersRepository(),
-        password_context=MockPasswordContext())
+        password_services=MockPasswordsServices())
 
 def test_authenticate_user__username(services):
     user = services.authenticate_user('user','654321')
@@ -60,10 +60,6 @@ def test_authenticate_user__existing_username_wrong_pass(services):
 def test_authenticate_user__existing_email_wrong_pass(services):
     user = services.authenticate_user('user@user.com','111111')
     assert user == None
-
-def test_hash_password(services):
-    hash = services.hash_password('123456')
-    assert hash == '123456'
 
 def test_create_token__access(services, monkeypatch):
     monkeypatch.setenv('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', '10')

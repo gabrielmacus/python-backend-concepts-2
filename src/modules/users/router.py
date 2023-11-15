@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 from .controller import UsersController
-from .models import User, PublicUser, LoginData
+from .models import User, UserDTO, LoginData
 from ..pagination.models import PaginationResult
 from typing import List
 

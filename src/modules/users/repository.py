@@ -9,21 +9,20 @@ from passlib.context import CryptContext
 from ..base.repository import BaseRepository
 from sqlmodel import or_
 from typing import Any
-from .services import UsersServices
-from .interfaces import IUsersRepository
+from ..password.services import PaswordServices
 
-class UsersRepository(IUsersRepository, BaseRepository[User]):
-    services:UsersServices
+class UsersRepository(BaseRepository[User]):
+    _password_services:PaswordServices
 
     def __init__(self,
                  db_services: DbServices = None,
-                 services:UsersServices = None
+                 password_services:PaswordServices = None
                  ) -> None:
-        self.services = services if services != None else UsersServices()
+        self._password_services = password_services if password_services != None else PaswordServices()
         super().__init__(User, db_services)
 
     def create(self, item: User) -> User:
-        item.password = self.services.hash_password(item.password)
+        item.password = self._password_services.hash_password(item.password)
         return super().create(item)
 
     def readByUsernameOrEmail(self, usernameOrEmail:str) -> User | None:
